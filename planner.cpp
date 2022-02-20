@@ -11,7 +11,7 @@ using namespace std;
  * @param state Vector containing indices of facts that are true in given state
  * @returns true if operator is applicable, false otherwise
  */
-bool is_valid_op(strips_operator_t &op, vector<int> &state) {
+bool is_valid_op(strips_operator_t &op, set<int> &state) {
     for (int i = 0; i < op.pre_size; i++) {
         if (!(find(state.begin(), state.end(), op.pre[i]) != state.end())) {
             return false;
@@ -27,11 +27,11 @@ bool is_valid_op(strips_operator_t &op, vector<int> &state) {
  * @param state Vector containing indices of facts that are true in given state
  * @returns Vector containing indices of operators applicable in given state
  */
-vector<int> expand(strips_t &strips, vector<int> &state) {
-    vector<int> valid_ops;
+set<int> expand(strips_t &strips, set<int> &state) {
+    set<int> valid_ops;
     for (int i = 0; i < strips.num_operators; i++) {
         if (is_valid_op(strips.operators[i], state)) {
-            valid_ops.push_back(i);
+            valid_ops.insert(i);
         }
     }
     return valid_ops;
@@ -45,8 +45,8 @@ vector<int> expand(strips_t &strips, vector<int> &state) {
  * @param op Operator to apply
  * @returns Vector containing indices of facts that are true in new state
  */
-vector<int> next_state(strips_t &strips, vector<int> &state, strips_operator_t &op) {
-    vector<int> new_state;
+set<int> next_state(strips_t &strips, set<int> &state, strips_operator_t &op) {
+    set<int> new_state;
     bool is_del;
     for (int fact : state) {
         is_del = false;
@@ -57,14 +57,27 @@ vector<int> next_state(strips_t &strips, vector<int> &state, strips_operator_t &
             }
         }
         if (!is_del)
-            new_state.push_back(fact);
+            new_state.insert(fact);
     }
     for (int i = 0; i < op.add_eff_size; i++) {
-        if (!(find(new_state.begin(), new_state.end(), op.add_eff[i]) != new_state.end())) {
-            new_state.push_back(op.add_eff[i]);
-        }
+            new_state.insert(op.add_eff[i]);
     }
     return new_state;
+}
+
+/**
+ * Computes the heuristic in given state
+ */
+int h(set<int> &state) {
+    return 0;
+}
+
+/**
+ * The A* algorithm
+ *
+ */
+void a_star(strips_t &strips) {
+    
 }
 
 int main(int argc, char *argv[])
@@ -82,24 +95,26 @@ int main(int argc, char *argv[])
     //fdrRead(&fdr, argv[2]);
 
     // Implement the search here
-    vector<int> init;
+    set<int> init;
     for (int i = 0; i < strips.init_size; i++) {
-        init.push_back(strips.init[i]);
+        init.insert(strips.init[i]);
         cout << strips.fact_names[strips.init[i]] << "\n";
     }
     cout << "\n\n";
-    vector<int> valid = expand(strips, init);
+    set<int> valid = expand(strips, init);
     for (int i : valid) {
         cout << strips.operators[i].name << "\n";
     }
-    vector<int> new_state = next_state(strips, init, strips.operators[valid[3]]);
+
+    set<int> new_state;
+    for (int i : valid) {
+        new_state = next_state(strips, init, strips.operators[i]);
+    }
     cout << "\n\n";
     for (int i : new_state) {
         cout << strips.fact_names[i] << "\n";
     }
     
-
-
 
     stripsFree(&strips);
     //fdrFree(&fdr);
