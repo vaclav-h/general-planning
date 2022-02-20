@@ -4,11 +4,20 @@
 using namespace std;
 
 
+struct compare_pri {
+    int operator() (const pair<set<int>, int> &p1, const pair<set<int>, int> &p2) {
+        return p1.second > p2.second;
+    }
+};
+
+typedef pair<set<int>, int> qpair;
+
+
 /* *
  * Checks if operator is applicable in given state
  *
  * @param op Operator to check
- * @param state Vector containing indices of facts that are true in given state
+ * @param state Set containing indices of facts that are true in given state
  * @returns true if operator is applicable, false otherwise
  */
 bool is_valid_op(strips_operator_t &op, set<int> &state) {
@@ -21,11 +30,22 @@ bool is_valid_op(strips_operator_t &op, set<int> &state) {
 }
 
 /**
+ * Checks if state is a goal state
+ *
+ * @param state Set containing indices of facts that are true in given state
+ * @param goal Set containing indices of facts that are true in goal state
+ * @returns true if state is a goal state
+ */
+bool is_goal(set<int> &state, set<int> &goal) {
+	return includes(state.begin(), state.end(), goal.begin(), goal.end()); 
+}
+
+/**
  * Finds applicable operators in given state
  *
  * @param strips The STRIPS problem given in strips_t
- * @param state Vector containing indices of facts that are true in given state
- * @returns Vector containing indices of operators applicable in given state
+ * @param state Set containing indices of facts that are true in given state
+ * @returns Set containing indices of operators applicable in given state
  */
 set<int> expand(strips_t &strips, set<int> &state) {
     set<int> valid_ops;
@@ -41,9 +61,9 @@ set<int> expand(strips_t &strips, set<int> &state) {
  * Applies operator on a state and returns resulting state
  *
  * @param strips The STRIPS problem given in strips_t
- * @param state Vector containing indices of facts that are true in given state
+ * @param state Set containing indices of facts that are true in given state
  * @param op Operator to apply
- * @returns Vector containing indices of facts that are true in new state
+ * @returns Set containing indices of facts that are true in new state
  */
 set<int> next_state(strips_t &strips, set<int> &state, strips_operator_t &op) {
     set<int> new_state;
@@ -65,6 +85,16 @@ set<int> next_state(strips_t &strips, set<int> &state, strips_operator_t &op) {
     return new_state;
 }
 
+vector<set<int>> generate_succ(strips_t strips, set<int> &state) {
+	vector<set<int>> succ;	
+	set<int> ops = expand(strips, state);
+	for (int o : ops) {
+		set<int> n_state = next_state(strips, state, strips.operators[o]);
+		succ.push_back(n_state);	
+	}
+	return succ;
+}
+
 /**
  * Computes the heuristic in given state
  */
@@ -77,8 +107,41 @@ int h(set<int> &state) {
  *
  */
 void a_star(strips_t &strips) {
+    // Initialize structures
+    set<set<int>> closed; 
+    priority_queue<qpair, vector<qpair>, compare_pri> open;
+	map<set<int>, set<int>> parent;
+	map<set<int>, int> parent_op;
     
+    // Convert init and goal states into sets
+    set<int> init;
+    for (int i = 0; i < strips.init_size; i++) {
+        init.insert(strips.init[i]);
+    }
+	set<int> goal;
+	for (int i = 0; i < strips.goal_size; i++) {
+        goal.insert(strips.goal[i]);
+    }
+
+    open.push(make_pair(init, h(init)));
+    
+    // Main loop
+    qpair u;
+    while(!open.empty()) {
+        u = open.top();
+        open.pop();
+        closed.insert(u.first);
+		if (is_goal(u.first, goal)) {
+			//return plan
+		} else {
+			vector<set<int>> succ = generate_succ(strips, u.first);
+			for (set<int> v : succ) {
+				//improve()	
+			}	
+		}
+    }
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -115,7 +178,7 @@ int main(int argc, char *argv[])
         cout << strips.fact_names[i] << "\n";
     }
     
-
+    a_star(strips);
     stripsFree(&strips);
     //fdrFree(&fdr);
 }
