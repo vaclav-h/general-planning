@@ -85,22 +85,63 @@ set<int> next_state(strips_t &strips, set<int> &state, strips_operator_t &op) {
     return new_state;
 }
 
-vector<set<int>> generate_succ(strips_t strips, set<int> &state) {
-	vector<set<int>> succ;	
+
+/**
+ * Generates vector of succesor states 
+ *
+ */
+vector<pair<set<int>, int>> generate_succ(strips_t strips, set<int> &state) {
+    vector<pair<set<int>, int>> succ;	
 	set<int> ops = expand(strips, state);
+    pair<set<int>, int> x; // pair<state, operator>
 	for (int o : ops) {
 		set<int> n_state = next_state(strips, state, strips.operators[o]);
-		succ.push_back(n_state);	
+        x = make_pair(n_state, o);
+		succ.push_back(x);	
 	}
 	return succ;
 }
 
 /**
  * Computes the heuristic in given state
+ *
  */
 int h(set<int> &state) {
     return 0;
 }
+
+/**
+ * Returns the weight of current optimal path from initial state to u
+ *
+ */
+int g(set<int> &u, map<set<int>, int> &dist) {
+    if (dist.find(u) == dist.end()) {
+        dist[u] = INT_MAX;
+        return dist[u];
+    } else {
+        return dist[u]; 
+    }
+}
+
+
+
+void improve(strips_t &strips, set<int> &u, pair<set<int>, int> &v, priority_queue<qpair, vector<qpair>, compare_pri> &open,
+                map<set<int>,bool> &in_queue, set<set<int>> &closed, map<set<int>, int> &dist) {
+    if (in_queue[v.first]) {
+        if (g(u, dist) + strips.operators[v.second].cost < g(v.first, dist)) {
+            //TODO 
+        }
+    // if v is closed
+    } else if (closed.find(v.first) != closed.end()) {
+        if (g(u, dist) + strips.operators[v.second].cost < g(v.first, dist)) {
+            //TODO 
+        }
+    } else {
+        //TODO
+    }
+}
+
+
 
 /**
  * The A* algorithm
@@ -109,9 +150,11 @@ int h(set<int> &state) {
 void a_star(strips_t &strips) {
     // Initialize structures
     set<set<int>> closed; 
-    priority_queue<qpair, vector<qpair>, compare_pri> open;
-	map<set<int>, set<int>> parent;
-	map<set<int>, int> parent_op;
+    priority_queue<qpair, vector<qpair>, compare_pri> open; // pair<state, f_value>
+	map<set<int>, set<int>> parent; //pointers to the parent nodes
+	map<set<int>, int> parent_op; //operator applied in parent node
+    map<set<int>, int> dist; //map for string the g_values
+    map<set<int>, bool> in_queue; // indicator if state is in queue
     
     // Convert init and goal states into sets
     set<int> init;
@@ -122,9 +165,11 @@ void a_star(strips_t &strips) {
 	for (int i = 0; i < strips.goal_size; i++) {
         goal.insert(strips.goal[i]);
     }
-
-    open.push(make_pair(init, h(init)));
     
+    // Enqueue initial state
+    open.push(make_pair(init, h(init)));
+    in_queue[init] = true;
+    dist[init] = 0;
     // Main loop
     qpair u;
     while(!open.empty()) {
@@ -134,9 +179,9 @@ void a_star(strips_t &strips) {
 		if (is_goal(u.first, goal)) {
 			//return plan
 		} else {
-			vector<set<int>> succ = generate_succ(strips, u.first);
-			for (set<int> v : succ) {
-				//improve()	
+			vector<pair<set<int>, int>> succ = generate_succ(strips, u.first);
+			for (pair<set<int>, int> v : succ) {
+				improve(strips, u.first, v, open, in_queue, closed, dist);	
 			}	
 		}
     }
