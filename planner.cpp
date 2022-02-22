@@ -111,41 +111,70 @@ int h(set<int> &state) {
 }
 
 /**
- * Returns the weight of current optimal path from initial state to u
+ * Prints the plan
  *
+ * @param strips The STRIPS problem given in strips_t
+ * @param init Initial state given as set
+ * @param f Final state from which to backtrack the solution
+ * @param parent Map of pointer to parent states 
+ * @param parent_op Map of operators applied on parents
  */
-int g(set<int> &u, map<set<int>, int> &dist) {
-    if (dist.find(u) == dist.end()) {
-        dist[u] = INT_MAX;
-        return dist[u];
-    } else {
-        return dist[u]; 
+void print_plan(strips_t &strips, set<int> &init, set<int> &f, map<set<int>, set<int>> &parent, map<set<int>, int> &parent_op) {
+    set<int> s = f;
+    stack<int> plan;
+    while (parent[s] != init) {
+        plan.push(parent_op[s]);
+        s = parent[s];
     }
+    while (!plan.empty()) {
+        cout << strips.operators[plan.top()].name << "\n";
+        plan.pop();
+    }
+
 }
 
 
-
+/**
+ * Relaxation subroutine for A* 
+ * Updates parent of v, open queue and closed set
+ *
+ */
 void improve(strips_t &strips, set<int> &u, pair<set<int>, int> &v, priority_queue<qpair, vector<qpair>, compare_pri> &open,
-                map<set<int>,bool> &in_queue, set<set<int>> &closed, map<set<int>, int> &dist) {
+                map<set<int>,bool> &in_queue, set<set<int>> &closed, map<set<int>, int> &dist, map<set<int>, set<int>> &parent,
+                map<set<int>, int> &parent_op) {
+    // v is in open queue
     if (in_queue[v.first]) {
-        if (g(u, dist) + strips.operators[v.second].cost < g(v.first, dist)) {
-            //TODO 
+        if (dist[u] + strips.operators[v.second].cost < dist[v.first]) {
+            parent[v.first] = u;    
+            parent_op[v.first] = v.second;
+            dist[v.first] = dist[u] + strips.operators[v.second].cost;
+            open.push(make_pair(v.first, dist[u] + strips.operators[v.second].cost + h(v.first)));
         }
     // if v is closed
     } else if (closed.find(v.first) != closed.end()) {
-        if (g(u, dist) + strips.operators[v.second].cost < g(v.first, dist)) {
-            //TODO 
+        if (dist[u] + strips.operators[v.second].cost < dist[v.first]) {
+            parent[v.first] = u;
+            parent_op[v.first] = v.second;
+            dist[v.first] = dist[u] + strips.operators[v.second].cost;
+            open.push(make_pair(v.first, dist[u] + strips.operators[v.second].cost + h(v.first)));
+            in_queue[v.first] = true;
+            closed.erase(v.first);
         }
     } else {
-        //TODO
+        parent[v.first] = u;
+        parent_op[v.first] = v.second;
+        dist[v.first] = dist[u] + strips.operators[v.second].cost;
+        open.push(make_pair(v.first, dist[u] + strips.operators[v.second].cost + h(v.first)));
+        in_queue[v.first] = true;
     }
 }
 
 
 
 /**
- * The A* algorithm
+ * The A* algorithm - finds a plan to a problem given in STRIPS representation
  *
+ * @param strips The STRIPS problem given in strips_t
  */
 void a_star(strips_t &strips) {
     // Initialize structures
@@ -153,7 +182,7 @@ void a_star(strips_t &strips) {
     priority_queue<qpair, vector<qpair>, compare_pri> open; // pair<state, f_value>
 	map<set<int>, set<int>> parent; //pointers to the parent nodes
 	map<set<int>, int> parent_op; //operator applied in parent node
-    map<set<int>, int> dist; //map for string the g_values
+    map<set<int>, int> dist; //map for the g_values
     map<set<int>, bool> in_queue; // indicator if state is in queue
     
     // Convert init and goal states into sets
@@ -170,18 +199,24 @@ void a_star(strips_t &strips) {
     open.push(make_pair(init, h(init)));
     in_queue[init] = true;
     dist[init] = 0;
+
     // Main loop
     qpair u;
     while(!open.empty()) {
         u = open.top();
         open.pop();
+        in_queue[u.first] = false;
         closed.insert(u.first);
 		if (is_goal(u.first, goal)) {
-			//return plan
+			// return plan
+            printf(";; Optimal cost: %d\n", u.second);
+            printf(";; h^max for init: \n\n");
+            print_plan(strips, init, u.first, parent, parent_op);
+            break;
 		} else {
 			vector<pair<set<int>, int>> succ = generate_succ(strips, u.first);
 			for (pair<set<int>, int> v : succ) {
-				improve(strips, u.first, v, open, in_queue, closed, dist);	
+				improve(strips, u.first, v, open, in_queue, closed, dist, parent, parent_op);	
 			}	
 		}
     }
@@ -203,26 +238,6 @@ int main(int argc, char *argv[])
     //fdrRead(&fdr, argv[2]);
 
     // Implement the search here
-    set<int> init;
-    for (int i = 0; i < strips.init_size; i++) {
-        init.insert(strips.init[i]);
-        cout << strips.fact_names[strips.init[i]] << "\n";
-    }
-    cout << "\n\n";
-    set<int> valid = expand(strips, init);
-    for (int i : valid) {
-        cout << strips.operators[i].name << "\n";
-    }
-
-    set<int> new_state;
-    for (int i : valid) {
-        new_state = next_state(strips, init, strips.operators[i]);
-    }
-    cout << "\n\n";
-    for (int i : new_state) {
-        cout << strips.fact_names[i] << "\n";
-    }
-    
     a_star(strips);
     stripsFree(&strips);
     //fdrFree(&fdr);

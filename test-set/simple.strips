@@ -1,0 +1,73 @@
+9
+(a_at_A)
+(a_at_B)
+(t_at_B)
+(t_at_C)
+(p_at_A)
+(p_at_B)
+(p_at_C)
+(p_in_a)
+(p_in_t)
+3 0 3 4
+1 6
+12
+fly-a-A-B
+1 0
+1 1
+1 0
+1
+fly-a-B-A
+1 1
+1 0
+1 1
+1
+drive-t-B-C
+1 2
+1 3
+1 2
+1
+drive-t-C-B
+1 3
+1 2
+1 3
+1
+load-p-t-B
+2 2 5
+1 8
+1 5
+1
+load-p-t-C
+2 3 6
+1 8
+1 6
+1
+load-p-a-A
+2 0 4
+1 7
+1 4
+1
+load-p-a-B
+2 1 5
+1 7
+1 5
+1
+unload-p-t-B
+2 2 8
+1 5
+1 8
+1
+unload-p-t-C
+2 3 8
+1 6
+1 8
+1
+unload-p-a-A
+2 0 7
+1 4
+1 7
+1
+unload-p-a-B
+2 1 7
+1 5
+1 7
+1
