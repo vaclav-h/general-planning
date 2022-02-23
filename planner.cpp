@@ -135,7 +135,6 @@ void print_plan(strips_t &strips, set<int> &init, set<int> &f, map<set<int>, set
         cout << strips.operators[plan.top()].name << "\n";
         plan.pop();
     }
-
 }
 
 
@@ -174,7 +173,7 @@ void a_star(strips_t &strips) {
         u = open.top();
         open.pop();
 		if (is_goal(u.first, goal)) {
-			// return plan
+		    // return plan
             printf(";; Optimal cost: %d\n", u.second);
             printf(";; h^max for init: \n\n");
             print_plan(strips, init, u.first, parent, parent_op);
@@ -200,7 +199,7 @@ void a_star(strips_t &strips) {
                     open.push(make_pair(v.first, new_dist + h(v.first)));
                 }
             }
-		}	
+		}
     }
 }
 
