@@ -140,55 +140,6 @@ void print_plan(strips_t &strips, set<int> &init, set<int> &f, map<set<int>, set
 
 
 /**
- * Relaxation subroutine for A* 
- * Updates parent of v, open queue and closed set
- *
- * @param strips The STRIPS problem given in strips_t
- * @param u State given as set
- * @param v State v (succesor of u) given as pair<state, operator_applied>
- * @param open Priority queue with open states
- * @param in_queue Indicator if state is in queue given as map<state, bool>
- * @param closed Set with closed states
- * @param dist Map with currently optimal distances from initial state
- * @param parent Pointers to parent nodes
- * @param parent_op Operator applied in parent node
- */
-void improve(strips_t &strips, set<int> &u, pair<set<int>, int> &v, priority_queue<qpair, vector<qpair>, compare_pri> &open,
-                map<set<int>, bool> &in_queue, set<set<int>> &closed, map<set<int>, int> &dist, map<set<int>, set<int>> &parent,
-                map<set<int>, int> &parent_op) {
-    // v is in open queue
-    if (in_queue[v.first]) {
-        // new path is cheaper
-        if (dist[u] + strips.operators[v.second].cost < dist[v.first]) {
-            parent[v.first] = u;    
-            parent_op[v.first] = v.second;
-            dist[v.first] = dist[u] + strips.operators[v.second].cost;
-            open.push(make_pair(v.first, dist[u] + strips.operators[v.second].cost + h(v.first)));
-        }
-    // if v is closed
-    } else if (closed.find(v.first) != closed.end()) {
-        // new path is cheaper
-        if (dist[u] + strips.operators[v.second].cost < dist[v.first]) {
-            parent[v.first] = u;
-            parent_op[v.first] = v.second;
-            dist[v.first] = dist[u] + strips.operators[v.second].cost;
-            open.push(make_pair(v.first, dist[u] + strips.operators[v.second].cost + h(v.first)));
-            in_queue[v.first] = true;
-            closed.erase(v.first);
-        }
-    // visiting v for the first time
-    } else {
-        parent[v.first] = u;
-        parent_op[v.first] = v.second;
-        dist[v.first] = dist[u] + strips.operators[v.second].cost;
-        open.push(make_pair(v.first, dist[u] + strips.operators[v.second].cost + h(v.first)));
-        in_queue[v.first] = true;
-    }
-}
-
-
-
-/**
  * The A* algorithm
  * Finds a plan to a problem given in STRIPS representation and prints it.
  *
@@ -196,13 +147,12 @@ void improve(strips_t &strips, set<int> &u, pair<set<int>, int> &v, priority_que
  */
 void a_star(strips_t &strips) {
     // Initialize structures
-    set<set<int>> closed; 
     priority_queue<qpair, vector<qpair>, compare_pri> open; // pair<state, f_value>
 	map<set<int>, set<int>> parent; //pointers to the parent nodes
 	map<set<int>, int> parent_op; //operator applied in parent node
-    map<set<int>, int> dist; //map for the g_values
-    map<set<int>, bool> in_queue; // indicator if state is in queue
-    
+    map<set<int>, int> dist; // map for the g_values
+    map<set<int>, bool> seen; // indicator if state was already visited     
+
     // Convert init and goal states into sets
     set<int> init;
     for (int i = 0; i < strips.init_size; i++) {
@@ -215,7 +165,7 @@ void a_star(strips_t &strips) {
     
     // Enqueue initial state
     open.push(make_pair(init, h(init)));
-    in_queue[init] = true;
+    seen[init] = true;
     dist[init] = 0;
 
     // Main loop
@@ -223,20 +173,34 @@ void a_star(strips_t &strips) {
     while(!open.empty()) {
         u = open.top();
         open.pop();
-        in_queue[u.first] = false;
-        closed.insert(u.first);
 		if (is_goal(u.first, goal)) {
 			// return plan
             printf(";; Optimal cost: %d\n", u.second);
             printf(";; h^max for init: \n\n");
             print_plan(strips, init, u.first, parent, parent_op);
             break;
-		} else {
-			vector<pair<set<int>, int>> succ = generate_succ(strips, u.first);
-			for (pair<set<int>, int> v : succ) {
-				improve(strips, u.first, v, open, in_queue, closed, dist, parent, parent_op);	
-			}	
 		}
+    	vector<pair<set<int>, int>> succ = generate_succ(strips, u.first);
+		for (pair<set<int>, int> v : succ) {
+            int new_dist = dist[u.first] + strips.operators[v.second].cost; 
+            if (!seen[v.first]) {
+                // first time visit
+                parent[v.first] = u.first;
+                parent_op[v.first] = v.second;
+                dist[v.first] = new_dist;
+                seen[v.first] = true;
+                open.push(make_pair(v.first, new_dist + h(v.first))); 
+            } else {
+                // state already seen
+                if (new_dist < dist[v.first]) {
+                    // better path found
+                    parent[v.first] = u.first;
+                    parent_op[v.first] = v.second;
+                    dist[v.first] = new_dist;
+                    open.push(make_pair(v.first, new_dist + h(v.first)));
+                }
+            }
+		}	
     }
 }
 
