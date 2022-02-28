@@ -3,6 +3,8 @@
 #include<bits/stdc++.h>
 using namespace std;
 
+#define INF INT_MAX
+
 // Compare type for priority queue
 struct compare_pri {
     int operator() (const pair<set<int>, int> &p1, const pair<set<int>, int> &p2) {
@@ -108,11 +110,73 @@ vector<pair<set<int>, int>> generate_succ(strips_t strips, set<int> &state) {
 }
 
 /**
- * Computes the heuristic in given state
+ * Computes h_max heuristic in given state
+ *
  *
  */
-int h(set<int> &state) {
-    return 0;
+int h_max(strips_t &strips, set<int> &state, set<int> &goal) {
+    // Initialize deltas
+    map<int, int> delta;
+    for (int f = 0; f < strips.num_facts; f++) {
+        if (state.find(f) != state.end()) {
+            delta[f] = 0;
+        } else {
+            delta[f] = INF;
+        }
+    }
+    for (int o = 0; o < strips.num_operators; o++) {
+        if (strips.operators[o].pre_size == 0) {
+            for (int f = 0; f < strips.operators[o].add_eff_size; f++) {
+                delta[f] = min(delta[f], strips.operators[o].cost); 
+            }
+        }
+    }
+    // Initialize U
+    map<int, int> U;
+    for (int o = 0; o < strips.num_operators; o++) {
+        U[o] = strips.operators[o].pre_size;
+    }
+    // Initialize C 
+    set<int> C;
+    while (!is_goal(C, goal)) {
+        int k;
+        int min_k = INF;
+        for (int f = 0; f < strips.num_facts; f++) {
+            if ((C.find(f) == C.end())) {
+                if (delta[f] < min_k) {
+                    min_k = delta[f];
+                    k = f;
+                }
+            }
+        }
+        C.insert(k);
+        for (int o = 0; o < strips.num_operators; o++) {
+            // Check if k is in pre(o)
+            bool k_in_pre = false;    
+            for (int i = 0; i < strips.operators[o].pre_size; i++) {
+                if (strips.operators[o].pre[i] == k) {
+                    k_in_pre = true;
+                    break;
+                }
+            }
+            if (k_in_pre) {
+                U[o] = U[o] - 1;
+                if (U[o] == 0) {
+                    for (int f = 0; f < strips.operators[o].add_eff_size; f++) {
+                        delta[strips.operators[o].add_eff[f]] = min(delta[strips.operators[o].add_eff[f]],
+                                                                    strips.operators[o].cost + delta[k]);
+                    }
+                }
+            }
+        }
+    }
+    int h_max = -INF;
+    for (int f : goal) {
+        if (delta[f] > h_max) {
+            h_max = delta[f];
+        }
+    }
+    return h_max;
 }
 
 /**
@@ -151,6 +215,7 @@ void a_star(strips_t &strips) {
 	map<set<int>, int> parent_op; //operator applied in parent node
     map<set<int>, int> dist; // map for the g_values
     map<set<int>, bool> seen; // indicator if state was already visited     
+    map<set<int>, int> h;
 
     // Convert init and goal states into sets
     set<int> init;
@@ -162,8 +227,11 @@ void a_star(strips_t &strips) {
         goal.insert(strips.goal[i]);
     }
     
+    // Compute h_max for init
+    int h_max_init = h_max(strips, init, goal);
+
     // Enqueue initial state
-    open.push(make_pair(init, h(init)));
+    open.push(make_pair(init, h_max_init));
     seen[init] = true;
     dist[init] = 0;
 
@@ -175,7 +243,7 @@ void a_star(strips_t &strips) {
 		if (is_goal(u.first, goal)) {
 		    // return plan
             printf(";; Optimal cost: %d\n", u.second);
-            printf(";; h^max for init: \n\n");
+            printf(";; h^max for init: %d\n\n", h_max_init);
             print_plan(strips, init, u.first, parent, parent_op);
             break;
 		}
@@ -188,7 +256,7 @@ void a_star(strips_t &strips) {
                 parent_op[v.first] = v.second;
                 dist[v.first] = new_dist;
                 seen[v.first] = true;
-                open.push(make_pair(v.first, new_dist + h(v.first))); 
+                open.push(make_pair(v.first, new_dist + h_max(strips, v.first, goal))); 
             } else {
                 // state already seen
                 if (new_dist < dist[v.first]) {
@@ -196,7 +264,7 @@ void a_star(strips_t &strips) {
                     parent[v.first] = u.first;
                     parent_op[v.first] = v.second;
                     dist[v.first] = new_dist;
-                    open.push(make_pair(v.first, new_dist + h(v.first)));
+                    open.push(make_pair(v.first, new_dist + h_max(strips, v.first, goal)));
                 }
             }
 		}
