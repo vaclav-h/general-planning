@@ -3,7 +3,8 @@
 #include<bits/stdc++.h>
 using namespace std;
 
-#define INF INT_MAX
+#define INF (INT_MAX/2) // Divided by 2 to prevent overflows when computing f-values
+
 
 // Compare type for priority queue
 struct compare_pri {
@@ -112,13 +113,18 @@ vector<pair<set<int>, int>> generate_succ(strips_t strips, set<int> &state) {
 /**
  * Computes h_max heuristic in given state
  *
- *
+ * @param strips The STRIPS problem given in strips_t
+ * @param state Set containing indices of facts that are true in given state
+ * @param goal Set containing indices of facts that are true in goal state
+ * @param delta Vector of integers of size strips.num_facts
+ * @param U Vector of integers of size strips.num_operators
+ * @returns Value of h_max heuristic in given state
  */
-int h_max(strips_t &strips, set<int> &state, set<int> &goal) {
-    // Initialize deltas
-    map<int, int> delta;
+int h_max(strips_t &strips, set<int> &state, set<int> &goal, vector<int> &delta, vector<int> &U) {
+    // Fill deltas
     for (int f = 0; f < strips.num_facts; f++) {
         if (state.find(f) != state.end()) {
+            // Fact f is in state
             delta[f] = 0;
         } else {
             delta[f] = INF;
@@ -131,28 +137,35 @@ int h_max(strips_t &strips, set<int> &state, set<int> &goal) {
             }
         }
     }
-    // Initialize U
-    map<int, int> U;
+    // Fill U
     for (int o = 0; o < strips.num_operators; o++) {
         U[o] = strips.operators[o].pre_size;
     }
-    // Initialize C 
+    // Initialize C
     set<int> C;
+
+    int k; // Next fact to be added to C
+    int delta_k; // delta[k]
+    int last_k = -1; // Fact added to C in previous iteration
+    bool k_in_pre; // Indicator if k is in preconditions of currently examined operator
     while (!is_goal(C, goal)) {
-        int k;
-        int min_k = INF;
+        delta_k = INF;
+        // Find fact k not present in C, having minimal delta
         for (int f = 0; f < strips.num_facts; f++) {
             if ((C.find(f) == C.end())) {
-                if (delta[f] < min_k) {
-                    min_k = delta[f];
+                if (delta[f] < delta_k) {
+                    delta_k = delta[f];
                     k = f;
                 }
             }
         }
+        // No change in k => dead-end state
+        if (k == last_k) return INF;
         C.insert(k);
+        last_k = k;
         for (int o = 0; o < strips.num_operators; o++) {
             // Check if k is in pre(o)
-            bool k_in_pre = false;    
+            k_in_pre = false;    
             for (int i = 0; i < strips.operators[o].pre_size; i++) {
                 if (strips.operators[o].pre[i] == k) {
                     k_in_pre = true;
@@ -215,7 +228,10 @@ void a_star(strips_t &strips) {
 	map<set<int>, int> parent_op; //operator applied in parent node
     map<set<int>, int> dist; // map for the g_values
     map<set<int>, bool> seen; // indicator if state was already visited     
-    map<set<int>, int> h;
+
+    // Reusable structures for h_max
+    vector<int> delta(strips.num_facts);
+    vector<int> U(strips.num_operators);
 
     // Convert init and goal states into sets
     set<int> init;
@@ -228,7 +244,7 @@ void a_star(strips_t &strips) {
     }
     
     // Compute h_max for init
-    int h_max_init = h_max(strips, init, goal);
+    int h_max_init = h_max(strips, init, goal, delta, U);
 
     // Enqueue initial state
     open.push(make_pair(init, h_max_init));
@@ -241,9 +257,9 @@ void a_star(strips_t &strips) {
         u = open.top();
         open.pop();
 		if (is_goal(u.first, goal)) {
-		    // return plan
-            printf(";; Optimal cost: %d\n", u.second);
-            printf(";; h^max for init: %d\n\n", h_max_init);
+		    // goal reached => print the plan 
+            printf(";; Cost: %d\n", u.second);
+            printf(";; Init: %d\n\n", h_max_init);
             print_plan(strips, init, u.first, parent, parent_op);
             break;
 		}
@@ -256,7 +272,7 @@ void a_star(strips_t &strips) {
                 parent_op[v.first] = v.second;
                 dist[v.first] = new_dist;
                 seen[v.first] = true;
-                open.push(make_pair(v.first, new_dist + h_max(strips, v.first, goal))); 
+                open.push(make_pair(v.first, new_dist + h_max(strips, v.first, goal, delta, U)));
             } else {
                 // state already seen
                 if (new_dist < dist[v.first]) {
@@ -264,7 +280,7 @@ void a_star(strips_t &strips) {
                     parent[v.first] = u.first;
                     parent_op[v.first] = v.second;
                     dist[v.first] = new_dist;
-                    open.push(make_pair(v.first, new_dist + h_max(strips, v.first, goal)));
+                    open.push(make_pair(v.first, new_dist + h_max(strips, v.first, goal, delta, U)));
                 }
             }
 		}
@@ -274,19 +290,16 @@ void a_star(strips_t &strips) {
 
 int main(int argc, char *argv[]) {
     strips_t strips;
-    //fdr_t fdr;
  
     if (argc != 3) {
         fprintf(stderr, "Usage: %s problem.strips problem.fdr\n", argv[0]);
         return -1;
     }
  
-    // Load the planning problem in STRIPS or FDR
+    // Load the planning problem in STRIPS
     stripsRead(&strips, argv[1]);
-    //fdrRead(&fdr, argv[2]);
 
-    // Implement the search here
     a_star(strips);
+
     stripsFree(&strips);
-    //fdrFree(&fdr);
 }
