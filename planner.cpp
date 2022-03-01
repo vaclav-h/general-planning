@@ -41,7 +41,7 @@ bool is_valid_op(strips_operator_t &op, set<int> &state) {
  * @returns true if state is a goal state
  */
 bool is_goal(set<int> &state, set<int> &goal) {
-	return includes(state.begin(), state.end(), goal.begin(), goal.end()); 
+    return includes(state.begin(), state.end(), goal.begin(), goal.end()); 
 }
 
 /**
@@ -80,11 +80,10 @@ set<int> next_state(strips_t &strips, set<int> &state, strips_operator_t &op) {
                 break;
             }
         }
-        if (!is_del)
-            new_state.insert(fact);
+        if (!is_del) new_state.insert(fact);
     }
     for (int i = 0; i < op.add_eff_size; i++) {
-            new_state.insert(op.add_eff[i]);
+        new_state.insert(op.add_eff[i]);
     }
     return new_state;
 }
@@ -98,15 +97,15 @@ set<int> next_state(strips_t &strips, set<int> &state, strips_operator_t &op) {
  * @returns vector of pairs pair<state, operator_applied>
  *
  */
-vector<pair<set<int>, int>> generate_succ(strips_t strips, set<int> &state) {
+vector<pair<set<int>, int>> generate_succ(strips_t &strips, set<int> &state) {
     vector<pair<set<int>, int>> succ;	
-	set<int> ops = expand(strips, state);
+    set<int> ops = expand(strips, state);
     pair<set<int>, int> x; // pair<state, operator>
-	for (int o : ops) {
-		set<int> n_state = next_state(strips, state, strips.operators[o]);
+    for (int o : ops) {
+        set<int> n_state = next_state(strips, state, strips.operators[o]);
         x = make_pair(n_state, o);
-		succ.push_back(x);	
-	}
+        succ.push_back(x);	
+    }
 	return succ;
 }
 
@@ -224,8 +223,8 @@ void print_plan(strips_t &strips, set<int> &init, set<int> &f, map<set<int>, set
 void a_star(strips_t &strips) {
     // Initialize structures
     priority_queue<qpair, vector<qpair>, compare_pri> open; // pair<state, f_value>
-	map<set<int>, set<int>> parent; //pointers to the parent nodes
-	map<set<int>, int> parent_op; //operator applied in parent node
+    map<set<int>, set<int>> parent; //pointers to the parent nodes
+    map<set<int>, int> parent_op; //operator applied in parent node
     map<set<int>, int> dist; // map for the g_values
     map<set<int>, bool> seen; // indicator if state was already visited     
 
@@ -238,8 +237,8 @@ void a_star(strips_t &strips) {
     for (int i = 0; i < strips.init_size; i++) {
         init.insert(strips.init[i]);
     }
-	set<int> goal;
-	for (int i = 0; i < strips.goal_size; i++) {
+    set<int> goal;
+    for (int i = 0; i < strips.goal_size; i++) {
         goal.insert(strips.goal[i]);
     }
     
@@ -256,15 +255,15 @@ void a_star(strips_t &strips) {
     while(!open.empty()) {
         u = open.top();
         open.pop();
-		if (is_goal(u.first, goal)) {
-		    // goal reached => print the plan 
+        if (is_goal(u.first, goal)) {
+            // goal reached => print the plan 
             printf(";; Cost: %d\n", u.second);
             printf(";; Init: %d\n\n", h_max_init);
             print_plan(strips, init, u.first, parent, parent_op);
             break;
-		}
-    	vector<pair<set<int>, int>> succ = generate_succ(strips, u.first);
-		for (pair<set<int>, int> v : succ) {
+        }
+        vector<pair<set<int>, int>> succ = generate_succ(strips, u.first);
+        for (pair<set<int>, int> v : succ) {
             int new_dist = dist[u.first] + strips.operators[v.second].cost; 
             if (!seen[v.first]) {
                 // first time visit
@@ -283,7 +282,7 @@ void a_star(strips_t &strips) {
                     open.push(make_pair(v.first, new_dist + h_max(strips, v.first, goal, delta, U)));
                 }
             }
-		}
+        }
     }
 }
 
