@@ -106,7 +106,7 @@ vector<pair<set<int>, int>> generate_succ(strips_t &strips, set<int> &state) {
         x = make_pair(n_state, o);
         succ.push_back(x);	
     }
-	return succ;
+    return succ;
 }
 
 /**
